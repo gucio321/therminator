@@ -2,7 +2,10 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 #include <LiquidCrystal_I2C.h>
+#include <SD.h>
+#include <SPI.h>
 
+const auto FILENAME = "datafile.csv";
 const auto DHT11_PIN = 5;
 const auto DHT22_PIN = 4;
 const auto LM35_PIN = A6;
@@ -51,6 +54,29 @@ void setup() {
   lcd.print("Hello from the");
   lcd.setCursor(0,1);
   lcd.print("Therminator!");
+  
+  // init SD card
+  if (!SD.begin(SDCARD_SS_PIN)) {
+    Serial.println("Cannott initialize SD card!");
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("SD init failed!");
+    bool backlight = true;
+    while (1) {
+      if (backlight) {
+        lcd.backlight();
+        backlight = false;
+      } else {
+        lcd.noBacklight();
+        backlight = true;
+      }
+      delay(1000);
+    }
+  }
+
+  Serial.println("SD init OK");
+  lcd.clear();
+  lcd.print("SD init OK");
 }
 
 void loop() {
@@ -62,19 +88,53 @@ void loop() {
   ntcRead();
   Serial.println("============END=============");
   // print the record on the screen
-  lcd.clear();
 
+  currentPage++;
+  if (currentPage >= N_SENSORS) {
+    currentPage = 0;
+  }
+
+  // prepar data for save
+  String dataString = "";
+  for (int i = 0; i < N_SENSORS; i++) {
+    dataString += String(record[i]);
+    if (i < N_SENSORS - 1) {
+      dataString += ",";
+    }
+  }
+
+  lcd.print("SAVE!!");
+  File dataFile = SD.open(FILENAME, FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(dataString);
+    dataFile.close();
+    Serial.println("Data saved: " + dataString);
+  } else {
+    Serial.println("Error opening file!");
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("SD write error!");
+    bool backlight = true;
+    while (1) {
+      if (backlight) {
+        lcd.backlight();
+        backlight = false;
+      } else {
+        lcd.noBacklight();
+        backlight = true;
+      }
+      delay(500);
+    }
+  }
+  lcd.print("OK");
+
+  lcd.clear();
   lcd.setCursor(0,0);
   lcd.print(names[currentPage]);
   lcd.setCursor(0,1);
   lcd.print("T=");
   lcd.print(record[currentPage]);
   lcd.print(" C");
-
-  currentPage++;
-  if (currentPage >= N_SENSORS) {
-    currentPage = 0;
-  }
 
   delay(1000);
 }

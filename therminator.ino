@@ -14,6 +14,8 @@ const auto NTC_PIN = A5;
 const auto NTC_R = 180000/2;
 const auto VREF = 1.0;
 auto const SUPPLY_V = 5.0;
+auto const PT100_PIN = A4;
+double const PT100_R = 680;
 
 DHT dht11(DHT11_PIN, DHT11);
 DHT dht22(DHT22_PIN, DHT22);
@@ -21,14 +23,15 @@ OneWire oneWire(DS18B20_PIN);
 DallasTemperature ds18b20(&oneWire);
 LiquidCrystal_I2C lcd(0x27,  16, 2);
 
-const int N_SENSORS = 5;
+const int N_SENSORS = 6;
 double record[N_SENSORS] = {0};
 char** names = new char*[N_SENSORS] {
   (char*)"DHT11",
   (char*)"DHT22",
   (char*)"LM35",
   (char*)"DS18B20",
-  (char*)"NTC"
+  (char*)"NTC",
+  (char*)"PT100"
 };
 
 enum SensorType {
@@ -36,7 +39,8 @@ enum SensorType {
   DHT22_SENSOR,
   LM35_SENSOR,
   DS18B20_SENSOR,
-  NTC_SENSOR
+  NTC_SENSOR,
+  PT100_SENSOR
 };
 
 int currentPage = 0;
@@ -197,3 +201,30 @@ void ntcRead() {
   Serial.print(ntcT);
   Serial.print(" *C\n");
 }
+
+void pt100Read() {
+  double rawVal = analogRead(PT100_PIN);
+  Serial.print("PT100: ADC = ");
+  Serial.print(rawVal);
+  Serial.print("\n");
+
+  double pt100V = rawVal / 1023.0 * VREF;
+  Serial.print("PT100: V = ");
+  Serial.print(pt100V);
+  Serial.print(" V\n");
+
+  double pt100R = pt100V*PT100_R/((SUPPLY_V - pt100V));
+  Serial.print("PT100: R = ");
+  Serial.print(pt100R);
+  Serial.print(" Ohm\n");
+
+  const double R0 = 100;
+  const double A = 3.9083e-3;
+  const double B = -5.775e-7;
+  double pt100T = (-A + sqrt(A*A - 4*B*(1 - pt100R/R0)))/(2*B);
+  Serial.print("PT100: T = ");
+  record[PT100_SENSOR] = pt100T;
+  Serial.print(pt100T);
+  Serial.print(" *C\n");
+}
+

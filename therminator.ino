@@ -13,9 +13,10 @@ const auto DS18B20_PIN = 3;
 const auto NTC_PIN = A5;
 const auto NTC_R = 180000/2;
 const auto VREF = 1.0;
-auto const SUPPLY_V = 5.0;
+auto const SUPPLY_V = 5.04;
 auto const PT100_PIN = A4;
-double const PT100_R = 680;
+double const PT100_R = 673;
+double const PT100_WIRES_R = 1.2;
 
 DHT dht11(DHT11_PIN, DHT11);
 DHT dht22(DHT22_PIN, DHT22);
@@ -90,6 +91,7 @@ void loop() {
   lm35Read();
   ds18b20Read();
   ntcRead();
+  pt100Read();
   Serial.println("============END=============");
   // print the record on the screen
 
@@ -213,13 +215,13 @@ void pt100Read() {
   Serial.print(pt100V);
   Serial.print(" V\n");
 
-  double pt100R = pt100V*PT100_R/((SUPPLY_V - pt100V));
+  double pt100R = pt100V*PT100_R/((SUPPLY_V - pt100V)) - PT100_WIRES_R;
   Serial.print("PT100: R = ");
   Serial.print(pt100R);
   Serial.print(" Ohm\n");
 
   const double R0 = 100;
-  const double A = 3.9083e-3;
+  const double A = 3.9827e-3;
   const double B = -5.775e-7;
   double pt100T = (-A + sqrt(A*A - 4*B*(1 - pt100R/R0)))/(2*B);
   Serial.print("PT100: T = ");

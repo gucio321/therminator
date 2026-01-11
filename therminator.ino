@@ -24,15 +24,17 @@ OneWire oneWire(DS18B20_PIN);
 DallasTemperature ds18b20(&oneWire);
 LiquidCrystal_I2C lcd(0x27,  16, 2);
 
-const int N_SENSORS = 6;
+const int N_SENSORS = 7;
 double record[N_SENSORS] = {0};
+unsigned long MEASURE_IDX = 0;
 char** names = new char*[N_SENSORS] {
-  (char*)"DHT11",
-  (char*)"DHT22",
-  (char*)"LM35",
-  (char*)"DS18B20",
-  (char*)"NTC",
-  (char*)"PT100"
+  (char*)"DHT11 [oC]",
+  (char*)"DHT22 [oC]",
+  (char*)"LM35 [oC]",
+  (char*)"DS18B20 [oC]",
+  (char*)"NTC [R]",
+  (char*)"PT100 [R]",
+  (char*)"PT100 [oC]"
 };
 
 enum SensorType {
@@ -40,7 +42,8 @@ enum SensorType {
   DHT22_SENSOR,
   LM35_SENSOR,
   DS18B20_SENSOR,
-  NTC_SENSOR,
+  NTC_SENSOR_R,
+  PT100_SENSOR_R,
   PT100_SENSOR
 };
 
@@ -81,11 +84,45 @@ void setup() {
 
   Serial.println("SD init OK");
   lcd.clear();
-  lcd.print("SD init OK");
+  lcd.print("SD init OK.");
+  lcd.setCursor(0,1);
+  lcd.print("Saving header...");
+  // save header
+  String headerString = "#Idx,time,";
+  for (int i = 0; i < N_SENSORS; i++) {
+    headerString += String(names[i]);
+    if (i < N_SENSORS - 1) {
+      headerString += ",";
+    }
+  }
+  File dataFile = SD.open(FILENAME, FILE_WRITE);
+  if (dataFile) {
+    dataFile.println(headerString);
+    dataFile.close();
+    Serial.println("Header saved: " + headerString);
+  } else {
+    Serial.println("Error opening file to save header!");
+    lcd.clear();
+    lcd.setCursor(0,0);
+    lcd.print("SD write error!");
+    bool backlight = true;
+    while (1) {
+      if (backlight) {
+        lcd.backlight();
+        backlight = false;
+      } else {
+        lcd.noBacklight();
+        backlight = true;
+      }
+      delay(500);
+    }
+  }
+
 }
 
 void loop() {
   Serial.println("===========BEGIN============");
+  MEASURE_IDX++;
   dht11Read();
   dht22Read();
   lm35Read();
@@ -101,7 +138,7 @@ void loop() {
   }
 
   // prepar data for save
-  String dataString = "";
+  String dataString = String(MEASURE_IDX) + "," + String(millis()) + ",";
   for (int i = 0; i < N_SENSORS; i++) {
     dataString += String(record[i]);
     if (i < N_SENSORS - 1) {
@@ -140,7 +177,8 @@ void loop() {
   lcd.setCursor(0,1);
   lcd.print("T=");
   lcd.print(record[currentPage]);
-  lcd.print(" C");
+  lcd.print("  ");
+  lcd.print(MEASURE_IDX);
 
   delay(1000);
 }
@@ -195,11 +233,11 @@ void ntcRead() {
   Serial.print("NTC: R = ");
   Serial.print(ntcR);
   Serial.print(" Ohm\n");
+  record[NTC_SENSOR_R] = ntcR;
 
   double B = 3380000;
   double ntcT = B/(log(ntcR/NTC_R) + B/298.15) - 273.15;
   Serial.print("NTC: T = ");
-  record[NTC_SENSOR] = ntcT;
   Serial.print(ntcT);
   Serial.print(" *C\n");
 }
@@ -219,6 +257,7 @@ void pt100Read() {
   Serial.print("PT100: R = ");
   Serial.print(pt100R);
   Serial.print(" Ohm\n");
+  record[PT100_SENSOR_R] = pt100R;
 
   const double R0 = 100;
   const double A = 3.9827e-3;

@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "ProPrj_therminator_2026-01-14")(type "KiCad")(uri "$(KIPRJMOD)/ProPrj_therminator_2026-01-14.pretty")(options "")(descr ""))
+)
